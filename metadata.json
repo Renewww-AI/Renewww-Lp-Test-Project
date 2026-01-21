@@ -1,0 +1,7 @@
+{
+  "name": "Renewww - Personal Style & Innovation",
+  "description": "Renewww is dedicated to the essence of personal style, offering products that encapsulate renewal and self-expression. Rooted in vibrant aesthetics and a commitment to individuality.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

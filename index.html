@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Renewww | Business Automation & Scalable Growth Infrastructure</title>
+  <meta name="description" content="Fix your growth engine with Renewww. We build secure, automated scaling infrastructure for Healthcare, Home Services, and Non-profits. Stop losing leads to manual chaos.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Grandiflora+One&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'blue-whale': '#003049',
+            'renew-red': '#d62828',
+          },
+          fontFamily: {
+            'oswald': ['Oswald', 'sans-serif'],
+            'grandiflora': ['Grandiflora One', 'serif'],
+            'sans': ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+    h1, h2, h3, .font-heading {
+      font-family: 'Oswald', sans-serif;
+      text-transform: uppercase;
+    }
+    .font-accent {
+      font-family: 'Grandiflora One', serif;
+    }
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+      100% { transform: translateY(0px); }
+    }
+    .floating-image {
+      animation: float 6s ease-in-out infinite;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 48, 73, 0.1);
+    }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "recharts": "https://esm.sh/recharts@2.12.7"
+  }
+}
+</script>
+</head>
+<body class="bg-[#fcfcfc] text-slate-900 selection:bg-renew-red/10">
+  <div id="root"></div>
+</body>
+</html>
