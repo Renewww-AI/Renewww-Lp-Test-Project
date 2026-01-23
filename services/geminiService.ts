@@ -1,5 +1,4 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Chat } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
@@ -53,4 +52,20 @@ export const getSEOAdvice = async (businessName: string, niche: string): Promise
     console.error("Gemini API Error:", error);
     return null;
   }
+};
+
+export const startGrowthChat = (businessName: string, auditContext: string): Chat => {
+  return ai.chats.create({
+    model: 'gemini-3-flash-preview',
+    config: {
+      systemInstruction: `You are a Senior Growth Infrastructure Specialist at Renewww. 
+      The user (${businessName}) has just received an automated growth audit.
+      Audit Context: ${auditContext}
+      
+      Your goal is to answer follow-up questions about this specific audit. 
+      Explain technical terms like 'Data Pipelines', 'HIPAA compliance', and 'Lead Attribution'.
+      Keep responses professional, concise, and conversion-focused. 
+      Encourage them to book a real consultation if they need implementation help.`,
+    },
+  });
 };

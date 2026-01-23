@@ -1,13 +1,34 @@
-
-import React, { useState, useMemo } from 'react';
-import { getSEOAdvice, SEOAdviceResponse } from '../services/geminiService';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { getSEOAdvice, SEOAdviceResponse, startGrowthChat } from '../services/geminiService';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import { Chat, GenerateContentResponse } from "@google/genai";
+
+interface Message {
+  role: 'user' | 'model';
+  text: string;
+}
 
 const SEOAssistant: React.FC = () => {
   const [businessName, setBusinessName] = useState('');
   const [niche, setNiche] = useState('Healthcare');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SEOAdviceResponse | null>(null);
+  
+  // Chat States
+  const [chatActive, setChatActive] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [userInput, setUserInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const chatSession = useRef<Chat | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,6 +37,44 @@ const SEOAssistant: React.FC = () => {
     const advice = await getSEOAdvice(businessName, niche);
     setResult(advice);
     setLoading(false);
+    
+    if (advice) {
+      // Initialize chat session with the audit as context
+      chatSession.current = startGrowthChat(businessName, JSON.stringify(advice));
+      setMessages([{ role: 'model', text: `Audit complete for ${businessName}. I've analyzed your ${niche} infrastructure. Do you have any questions about the roadmap or the competency scores?` }]);
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userInput.trim() || !chatSession.current || isTyping) return;
+
+    const userMessage = userInput.trim();
+    setUserInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    setIsTyping(true);
+
+    try {
+      const stream = await chatSession.current.sendMessageStream({ message: userMessage });
+      let fullResponse = '';
+      
+      setMessages(prev => [...prev, { role: 'model', text: '' }]);
+
+      for await (const chunk of stream) {
+        const chunkText = (chunk as GenerateContentResponse).text || '';
+        fullResponse += chunkText;
+        setMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1].text = fullResponse;
+          return newMessages;
+        });
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      setMessages(prev => [...prev, { role: 'model', text: "I'm sorry, I encountered an error. Please try again." }]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const chartData = useMemo(() => {
@@ -92,7 +151,7 @@ const SEOAssistant: React.FC = () => {
 
       {result && (
         <div className="mt-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 mb-12">
             {/* Visual Analytics Column */}
             <div className="lg:col-span-5 space-y-8">
               <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm h-[350px]">
@@ -116,16 +175,6 @@ const SEOAssistant: React.FC = () => {
                 <span className="text-renew-red font-bold text-[10px] uppercase tracking-widest block mb-2">The Diagnosis</span>
                 <p className="text-sm leading-relaxed font-grandiflora italic text-lg">"{result.summary}"</p>
               </div>
-
-              {result.warning && (
-                <div className="p-4 bg-renew-red/5 border border-renew-red/10 rounded-2xl flex items-start gap-3">
-                  <div className="text-renew-red text-xl">⚠️</div>
-                  <p className="text-[11px] text-slate-600 leading-relaxed pt-1">
-                    <span className="text-renew-red font-bold uppercase text-[9px] block mb-1">Scale Risk Warning:</span>
-                    {result.warning}
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Strategic Roadmap Column */}
@@ -142,7 +191,7 @@ const SEOAssistant: React.FC = () => {
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               return (
-                                <div className="bg-white p-3 shadow-xl border border-slate-100 rounded-xl max-w-xs">
+                                <div className="bg-white p-3 shadow-xl border border-slate-100 rounded-xl max-w-xs z-50">
                                   <p className="text-[10px] font-bold text-renew-red mb-1">{payload[0].payload.name}</p>
                                   <p className="text-xs text-blue-whale font-medium">{payload[0].payload.step}</p>
                                 </div>
@@ -173,20 +222,64 @@ const SEOAssistant: React.FC = () => {
                 ))}
               </div>
 
-              <div className="p-6 border border-slate-100 rounded-3xl bg-slate-50/50">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-2">Competitive Edge Recommendation</span>
-                <p className="text-sm font-bold text-blue-whale flex gap-2">
-                  <span className="text-renew-red font-black">»</span>
-                  {result.competitiveEdge}
-                </p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setChatActive(!chatActive)}
+                  className={`flex-1 py-5 rounded-full font-oswald font-bold text-sm flex items-center justify-center gap-3 transition-all shadow-2xl ${chatActive ? 'bg-renew-red text-white' : 'bg-blue-whale text-white hover:bg-slate-800'}`}
+                >
+                  {chatActive ? 'Close Specialist Chat' : 'Chat with Specialist'}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
               </div>
-
-              <button className="w-full py-5 bg-blue-whale text-white font-oswald font-bold rounded-full hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-2xl">
-                Execute Visual Growth Plan
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7l5 5m0 0l-5 5m5-5H6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
             </div>
           </div>
+
+          {/* Real-time Follow-up Chat Interface */}
+          {chatActive && (
+            <div className="border-t border-slate-100 pt-12 animate-in fade-in zoom-in duration-500">
+              <div className="max-w-3xl mx-auto bg-slate-50/50 rounded-[40px] border border-slate-200 overflow-hidden flex flex-col h-[500px]">
+                <div className="p-6 bg-blue-whale text-white flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="font-oswald font-bold text-lg tracking-wider">Growth Specialist (AI)</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">Connected to Renewww Core</span>
+                </div>
+                
+                <div className="flex-grow overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-200">
+                  {messages.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] px-6 py-4 rounded-[2rem] text-sm shadow-sm ${
+                        msg.role === 'user' 
+                          ? 'bg-renew-red text-white rounded-tr-none' 
+                          : 'bg-white text-blue-whale border border-slate-100 rounded-tl-none'
+                      }`}>
+                        {msg.text || (isTyping && i === messages.length - 1 ? "Thinking..." : "")}
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+
+                <form onSubmit={handleSendMessage} className="p-6 bg-white border-t border-slate-100 flex gap-3">
+                  <input 
+                    type="text" 
+                    placeholder="Ask about your security gap or roadmap..." 
+                    className="flex-grow px-6 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-whale text-sm font-medium"
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={isTyping || !userInput.trim()}
+                    className="bg-blue-whale text-white w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-slate-800 transition-all disabled:opacity-50"
+                  >
+                    <svg className="w-5 h-5 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
